@@ -2,6 +2,7 @@ package io.github.mikhirurg.jbackup.model;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Objects;
 
 public class CleaningAlgorithm {
 
@@ -30,6 +31,7 @@ public class CleaningAlgorithm {
 
     private CleaningAlgorithm() {
         flags = new Boolean[FlagType.SIZE.getVal()];
+        Arrays.fill(flags, null);
     }
 
     public static CleaningAlgorithm createCleaningAlgorithm() {
@@ -63,10 +65,6 @@ public class CleaningAlgorithm {
 
     public boolean checkPoint(long totalVolume, long totalAmount, RestorePoint point) {
 
-        if (volumeLimit == null && amountLimit == null && minDate == null) {
-            return false;
-        }
-
         if (volumeLimit != null) {
             flags[FlagType.VOLUME_LIMIT.getVal()] = totalVolume + point.getVolume() > volumeLimit;
         }
@@ -77,6 +75,10 @@ public class CleaningAlgorithm {
 
         if (minDate != null) {
             flags[FlagType.DATE_LIMIT.getVal()] = point.getCreationDate().compareTo(minDate) < 0;
+        }
+
+        if (Arrays.stream(flags).allMatch(Objects::isNull)) {
+            return false;
         }
 
         if (removeIfAny) {
