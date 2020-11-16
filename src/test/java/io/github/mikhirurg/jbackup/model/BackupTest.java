@@ -7,6 +7,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -143,5 +144,58 @@ public class BackupTest {
         backup1.save();
         Assert.assertEquals(1, Files.find(Path.of("backup1.zip"), 1,
                 ((path, basicFileAttributes) -> path.equals(Path.of("backup1.zip")))).count());
+    }
+
+    @Test
+    public void caseSix() throws IOException {
+        BackupManager backupManager = new BackupManager();
+        Backup backup1 = backupManager.createBackup(
+                "backup1",
+                List.of(
+                        Path.of("fileA.txt"),
+                        Path.of("fileB.txt")
+                ),
+                new DirectorySaver(Path.of("backup1"))
+        );
+        FixtureUtils.Time.useMockTime(LocalDateTime.of(2020, 11, 12, 0, 0));
+        backupManager.createFullRestorePoint(backup1.getId(), "full_point1");
+        backup1.addFile(Path.of("FileC.txt"));
+
+        FixtureUtils.Time.useSystemTime();
+        backupManager.createFullRestorePoint(backup1.getId(), "full_point2");
+        CleaningAlgorithm cleaningAlgorithm = CleaningAlgorithm.createCleaningAlgorithm()
+                .addMinDate(LocalDateTime.of(2020, 11, 13, 0,0))
+                .addAmountLimit(2)
+                .removeIfAny();
+        backup1.applyCleaningAlgorithm(cleaningAlgorithm);
+        Assert.assertEquals(1, backup1.getRestorePoints().size());
+        backup1.save();
+    }
+
+    @Test
+    public void caseSeven() throws IOException {
+        BackupManager backupManager = new BackupManager();
+        Backup backup1 = backupManager.createBackup(
+                "backup1",
+                List.of(
+                        Path.of("fileA.txt"),
+                        Path.of("fileB.txt")
+                ),
+                new DirectorySaver(Path.of("backup1"))
+        );
+        FixtureUtils.Time.useMockTime(LocalDateTime.of(2020, 11, 12, 0, 0));
+        backupManager.createFullRestorePoint(backup1.getId(), "full_point1");
+        backup1.addFile(Path.of("FileC.txt"));
+
+        FixtureUtils.Time.useSystemTime();
+        backupManager.createFullRestorePoint(backup1.getId(), "full_point2");
+        CleaningAlgorithm cleaningAlgorithm = CleaningAlgorithm.createCleaningAlgorithm()
+                .addMinDate(LocalDateTime.of(2020, 11, 13, 0,0))
+                .addAmountLimit(1)
+                .removeIfAll();
+
+        backup1.applyCleaningAlgorithm(cleaningAlgorithm);
+        Assert.assertEquals(1, backup1.getRestorePoints().size());
+        backup1.save();
     }
 }
