@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 public class BackupTest {
     @Test
-    public void caseOne() throws Exception {
+    public void simpleArchiveBackupAmountCleanTest() throws Exception {
         BackupManager backupManager = new BackupManager();
         Backup backup1 = backupManager.createBackup(
                 "backup1",
@@ -22,7 +22,9 @@ public class BackupTest {
                         Path.of("fileA.txt"),
                         Path.of("fileB.txt")
                 ),
-                new ArchiveSaver(Path.of("backup1.zip"))
+                new ArchiveSaver(Path.of("backup1.zip")),
+                CleaningAlgorithm.createCleaningAlgorithm()
+                        .addAmountLimit(1)
         );
         RestorePoint restorePoint = backupManager.createFullRestorePoint(backup1.getId(), "full_point1");
         restorePoint.generateIndex();
@@ -32,14 +34,10 @@ public class BackupTest {
         Assert.assertTrue(inner.contains(Path.of("fileA.txt")));
         Assert.assertTrue(inner.contains(Path.of("fileB.txt")));
 
-        RestorePoint restorePoint1 = backupManager.createIncrementalRestorePoint(backup1.getId(), "incremental_point1");
-        restorePoint1.generateIndex();
-
-        CleaningAlgorithm algorithm = CleaningAlgorithm.createCleaningAlgorithm().addAmountLimit(1);
         try {
-            backup1.applyCleaningAlgorithm(algorithm);
+            backupManager.createIncrementalRestorePoint(backup1.getId(), "incremental_point1");
             Assert.fail("No exception was thrown");
-        } catch (JBackupException e) {
+        } catch (JBackupException ignored) {
 
         }
 
@@ -47,7 +45,7 @@ public class BackupTest {
     }
 
     @Test
-    public void caseTwo() throws Exception {
+    public void simpleDirBackupAmountCleanTest() throws Exception {
         BackupManager backupManager = new BackupManager();
         Backup backup1 = backupManager.createBackup(
                 "backup1",
@@ -55,7 +53,8 @@ public class BackupTest {
                         Path.of("fileA.txt"),
                         Path.of("fileB.txt")
                 ),
-                new DirectorySaver(Path.of("backup1"))
+                new DirectorySaver(Path.of("backup1")),
+                CleaningAlgorithm.createCleaningAlgorithm().addAmountLimit(1)
         );
         RestorePoint restorePoint = backupManager.createFullRestorePoint(backup1.getId(), "full_point1");
 
@@ -63,21 +62,17 @@ public class BackupTest {
         Set<Path> inner = restorePoint.getStoredFiles().stream().map(FileInfo::getFile).collect(Collectors.toSet());
         Assert.assertTrue(inner.contains(Path.of("fileA.txt")));
         Assert.assertTrue(inner.contains(Path.of("fileB.txt")));
-
-        backupManager.createFullRestorePoint(backup1.getId(), "full_point2");
-        CleaningAlgorithm algorithm = CleaningAlgorithm.createCleaningAlgorithm().addAmountLimit(1);
         try {
-            backup1.applyCleaningAlgorithm(algorithm);
+            backupManager.createFullRestorePoint(backup1.getId(), "full_point2");
         } catch (JBackupException e) {
             Assert.fail(e.getMessage());
         }
         Assert.assertEquals(1, backup1.getRestorePoints().size());
-
         backup1.save();
     }
 
     @Test
-    public void caseThree() {
+    public void simpleArchiveBackupVolumeCleanTest() throws IOException {
         BackupManager backupManager = new BackupManager();
         Backup backup1 = backupManager.createBackup(
                 "backup1",
@@ -85,7 +80,8 @@ public class BackupTest {
                         Path.of("100m1.txt"),
                         Path.of("100m2.txt")
                 ),
-                new ArchiveSaver(Path.of(""))
+                new ArchiveSaver(Path.of("backup1.zip")),
+                CleaningAlgorithm.createCleaningAlgorithm().addVolumeLimit(150 * 1024 * 1024)
         );
         RestorePoint restorePoint = backupManager.createFullRestorePoint(backup1.getId(), "full_point1");
 
@@ -94,22 +90,18 @@ public class BackupTest {
         Assert.assertTrue(inner.contains(Path.of("100m1.txt")));
         Assert.assertTrue(inner.contains(Path.of("100m1.txt")));
 
-        backupManager.createFullRestorePoint(backup1.getId(), "full_point2");
-
-        Assert.assertEquals(2, backup1.getRestorePoints().size());
-        Assert.assertEquals(200 * 1024 * 1024, backup1.getVolume());
-
-        CleaningAlgorithm algorithm = CleaningAlgorithm.createCleaningAlgorithm().addVolumeLimit(150 * 1024 * 1024);
         try {
-            backup1.applyCleaningAlgorithm(algorithm);
+            backupManager.createFullRestorePoint(backup1.getId(), "full_point2");
         } catch (JBackupException e) {
             Assert.fail(e.getMessage());
         }
         Assert.assertEquals(1, backup1.getRestorePoints().size());
+        Assert.assertEquals(200 * 1024 * 1024, backup1.getVolume());
+        backup1.save();
     }
 
     @Test
-    public void caseFour() throws IOException {
+    public void dirBackupSaveTest() throws IOException {
         BackupManager backupManager = new BackupManager();
         Backup backup1 = backupManager.createBackup(
                 "backup1",
@@ -123,12 +115,11 @@ public class BackupTest {
         backup1.addFile(Path.of("FileC.txt"));
         backupManager.createIncrementalRestorePoint(backup1.getId(), "incremental_point1");
         backup1.save();
-        Assert.assertEquals(1, Files.find(Path.of("backup1"), 1,
-                ((path, basicFileAttributes) -> path.equals(Path.of("backup1")))).count());
+        Assert.assertTrue(Files.exists(Path.of("backup1")));
     }
 
     @Test
-    public void caseFive() throws IOException {
+    public void archiveBackupSaveTest() throws IOException {
         BackupManager backupManager = new BackupManager();
         Backup backup1 = backupManager.createBackup(
                 "backup1",
@@ -142,12 +133,11 @@ public class BackupTest {
         backup1.addFile(Path.of("FileC.txt"));
         backupManager.createIncrementalRestorePoint(backup1.getId(), "incremental_point1");
         backup1.save();
-        Assert.assertEquals(1, Files.find(Path.of("backup1.zip"), 1,
-                ((path, basicFileAttributes) -> path.equals(Path.of("backup1.zip")))).count());
+        Assert.assertTrue(Files.exists(Path.of("backup1.zip")));
     }
 
     @Test
-    public void caseSix() throws IOException {
+    public void simpleDirBackupSizeTimeCleanTest() throws IOException {
         BackupManager backupManager = new BackupManager();
         Backup backup1 = backupManager.createBackup(
                 "backup1",
@@ -155,7 +145,11 @@ public class BackupTest {
                         Path.of("fileA.txt"),
                         Path.of("fileB.txt")
                 ),
-                new DirectorySaver(Path.of("backup1"))
+                new DirectorySaver(Path.of("backup1")),
+                CleaningAlgorithm.createCleaningAlgorithm()
+                        .addMinDate(LocalDateTime.of(2020, 11, 13, 0, 0))
+                        .addAmountLimit(2)
+                        .removeIfAny()
         );
         FixtureUtils.Time.useMockTime(LocalDateTime.of(2020, 11, 12, 0, 0));
         backupManager.createFullRestorePoint(backup1.getId(), "full_point1");
@@ -163,17 +157,12 @@ public class BackupTest {
 
         FixtureUtils.Time.useSystemTime();
         backupManager.createFullRestorePoint(backup1.getId(), "full_point2");
-        CleaningAlgorithm cleaningAlgorithm = CleaningAlgorithm.createCleaningAlgorithm()
-                .addMinDate(LocalDateTime.of(2020, 11, 13, 0,0))
-                .addAmountLimit(2)
-                .removeIfAny();
-        backup1.applyCleaningAlgorithm(cleaningAlgorithm);
         Assert.assertEquals(1, backup1.getRestorePoints().size());
         backup1.save();
     }
 
     @Test
-    public void caseSeven() throws IOException {
+    public void simpleDirBackupSizeTimeCleanTest2() throws IOException {
         BackupManager backupManager = new BackupManager();
         Backup backup1 = backupManager.createBackup(
                 "backup1",
@@ -181,7 +170,11 @@ public class BackupTest {
                         Path.of("fileA.txt"),
                         Path.of("fileB.txt")
                 ),
-                new DirectorySaver(Path.of("backup1"))
+                new DirectorySaver(Path.of("backup1")),
+                CleaningAlgorithm.createCleaningAlgorithm()
+                        .addMinDate(LocalDateTime.of(2020, 11, 13, 0, 0))
+                        .addAmountLimit(1)
+                        .removeIfAll()
         );
         FixtureUtils.Time.useMockTime(LocalDateTime.of(2020, 11, 12, 0, 0));
         backupManager.createFullRestorePoint(backup1.getId(), "full_point1");
@@ -189,13 +182,27 @@ public class BackupTest {
 
         FixtureUtils.Time.useSystemTime();
         backupManager.createFullRestorePoint(backup1.getId(), "full_point2");
-        CleaningAlgorithm cleaningAlgorithm = CleaningAlgorithm.createCleaningAlgorithm()
-                .addMinDate(LocalDateTime.of(2020, 11, 13, 0,0))
-                .addAmountLimit(1)
-                .removeIfAll();
-
-        backup1.applyCleaningAlgorithm(cleaningAlgorithm);
         Assert.assertEquals(1, backup1.getRestorePoints().size());
         backup1.save();
+    }
+
+    @Test
+    public void caseEight() throws IOException {
+        BackupManager backupManager = new BackupManager();
+        Backup backup1 = backupManager.createBackup(
+                "backup1",
+                List.of(
+                        Path.of("fileA.txt"),
+                        Path.of("fileB.txt")
+                ),
+                new ArchiveSaver(Path.of("backup1.zip"))
+        );
+        backupManager.createFullRestorePoint(backup1.getId(), "full_point1");
+        backup1.addFile(Path.of("FileC.txt"));
+        backupManager.createIncrementalRestorePoint(backup1.getId(), "incremental_point1");
+        backup1.removeFile(Path.of("FileA.txt"));
+        backupManager.createIncrementalRestorePoint(backup1.getId(), "incremental_point2");
+        backupManager.saveBackup(backup1.getId());
+        Assert.assertTrue(Files.exists(Path.of("backup1.zip")));
     }
 }

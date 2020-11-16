@@ -62,6 +62,11 @@ public class CleaningAlgorithm {
     }
 
     public boolean checkPoint(long totalVolume, long totalAmount, RestorePoint point) {
+
+        if (volumeLimit == null && amountLimit == null && minDate == null) {
+            return false;
+        }
+
         if (volumeLimit != null) {
             flags[FlagType.VOLUME_LIMIT.getVal()] = totalVolume + point.getVolume() > volumeLimit;
         }

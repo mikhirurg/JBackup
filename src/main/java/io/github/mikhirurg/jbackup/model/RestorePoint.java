@@ -29,7 +29,7 @@ public abstract class RestorePoint {
 
     public abstract PointType getPointType();
 
-    public abstract void updateFilesList(List<FileInfo> fileInfos);
+    public abstract List<FileInfo> updateFilesList(List<FileInfo> fileInfos);
 
     public abstract String generateIndex();
 }

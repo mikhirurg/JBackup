@@ -1,5 +1,6 @@
 package io.github.mikhirurg.jbackup.model;
 
+import io.github.mikhirurg.jbackup.exceptions.FileNotInBackupException;
 import io.github.mikhirurg.jbackup.exceptions.NoFullRestoreException;
 
 import java.io.IOException;
@@ -14,17 +15,23 @@ public class Backup {
     private final long id;
     private final String name;
     private final FileSaver fileSaver;
+    private CleaningAlgorithm cleaningAlgorithm;
 
-    Backup(long id, String name, List<Path> files, FileSaver fileSaver) {
+    Backup(long id, String name, List<Path> files, FileSaver fileSaver, CleaningAlgorithm cleaningAlgorithm) {
         this.id = id;
         this.files = new LinkedList<>(files);
         this.name = name;
         this.fileSaver = fileSaver;
+        this.cleaningAlgorithm = cleaningAlgorithm;
         restorePoints = new LinkedList<>();
     }
 
     public void save() throws IOException {
         fileSaver.save(this);
+    }
+
+    public void setCleaningAlgorithm(CleaningAlgorithm cleaningAlgorithm) {
+        this.cleaningAlgorithm = cleaningAlgorithm;
     }
 
     public long getVolume() {
@@ -35,7 +42,7 @@ public class Backup {
                 .orElse(0L);
     }
 
-    public void applyCleaningAlgorithm(CleaningAlgorithm cleaningAlgorithm) {
+    private void applyCleaningAlgorithm(CleaningAlgorithm cleaningAlgorithm) {
         long totalVolume = 0;
         int amount = 0;
         int listBorder = restorePoints.size();
@@ -60,6 +67,7 @@ public class Backup {
     public FullRestorePoint createFullRestorePoint(String name) {
         FullRestorePoint fullRestorePoint = new FullRestorePoint(this, name);
         restorePoints.add(fullRestorePoint);
+        applyCleaningAlgorithm(cleaningAlgorithm);
         return fullRestorePoint;
     }
 
@@ -70,6 +78,7 @@ public class Backup {
                 .reduce(Boolean::logicalOr).orElseThrow()) {
             IncrementalRestorePoint incrementalRestorePoint = new IncrementalRestorePoint(this, name);
             restorePoints.add(incrementalRestorePoint);
+            applyCleaningAlgorithm(cleaningAlgorithm);
             return incrementalRestorePoint;
         } else {
             throw new NoFullRestoreException();
@@ -81,8 +90,8 @@ public class Backup {
                 "Backup size: " + getVolume() + "\n" +
                 "Restore points list: \n" +
                 restorePoints.stream()
-                .map(RestorePoint::getPointName)
-                .collect(Collectors.joining("\n"));
+                        .map(RestorePoint::getPointName)
+                        .collect(Collectors.joining("\n"));
     }
 
     public long getId() {
@@ -102,7 +111,9 @@ public class Backup {
     }
 
     public void removeFile(Path file) {
-        // TODO: Exception if user tries to delete unknown file
+        if (!files.contains(file))
+            throw new FileNotInBackupException(file);
+
         files.remove(file);
     }
 

@@ -27,15 +27,17 @@ public class FullRestorePoint extends RestorePoint {
     }
 
     @Override
-    public void updateFilesList(List<FileInfo> filePaths) {
+    public List<FileInfo> updateFilesList(List<FileInfo> filePaths) {
         filePaths.clear();
         filePaths.addAll(getStoredFiles());
+        return filePaths;
     }
 
     @Override
     public String generateIndex() {
-        return "Backup type: " + getPointType().toString() + "\n" +
+        return "Point type: " + getPointType().toString() + "\n" +
                 "Creation date: " + creationDate.toString() + "\n" +
+                "Point size: " + getVolume() + "\n" +
                 getPaths().stream()
                         .map(e -> e.toAbsolutePath().toString())
                         .collect(Collectors.joining("\n"));

@@ -34,7 +34,7 @@ public class IncrementalRestorePoint extends RestorePoint {
 
         List<FileInfo> fileInfos = new LinkedList<>();
         for (int i = lastPoint; i < backup.getRestorePoints().size(); i++) {
-            backup.getRestorePoints().get(i).updateFilesList(fileInfos);
+            fileInfos = backup.getRestorePoints().get(i).updateFilesList(fileInfos);
         }
 
         List<Path> paths = fileInfos
@@ -69,17 +69,19 @@ public class IncrementalRestorePoint extends RestorePoint {
     }
 
     @Override
-    public void updateFilesList(List<FileInfo> fileInfos) {
+    public List<FileInfo> updateFilesList(List<FileInfo> fileInfos) {
         fileInfos = fileInfos.stream()
                 .filter(e -> !toDelete.contains(e.getFile()))
                 .collect(Collectors.toList());
         fileInfos.addAll(getNewFiles());
+        return fileInfos;
     }
 
     @Override
     public String generateIndex() {
         return "Backup type: " + getPointType().toString() + "\n" +
                 "Creation date: " + creationDate.toString() + "\n" +
+                "Point size: " + getVolume() + "\n" +
                 getNewFiles().stream()
                         .map(e -> "+ " + e.getFile().toAbsolutePath().toString())
                         .collect(Collectors.joining("\n")) +
