@@ -27,7 +27,7 @@ public class Test {
         backup1.applyCleaningAlgorithm(cleaningAlgorithm);
         System.out.println(backup1.getRestorePoints().size());*/
 
-        Files.write(Path.of("C:/Users/mikha/IdeaProjects/JBackup/sandbox/case3/100m1.txt"), ByteBuffer.allocate(100 * 1024 * 1024).put((byte) 1).array());
+        Files.write(Path.of("C:/Users/mikha/IdeaProjects/JBackup/sandbox/case3/100m1.txt"), ByteBuffer.allocate(100 * 1024 * 1024).put((byte) 49).array());
         Files.write(Path.of("C:/Users/mikha/IdeaProjects/JBackup/sandbox/case3/100m2.txt"), ByteBuffer.allocate(100 * 1024 * 1024).put((byte) 2).array());
     }
 }
